@@ -10,23 +10,20 @@
     <style>
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter",
-                sans-serif;
+            sans-serif;
             background-color: #f7f9fb;
         }
     </style>
 </head>
 <body class="p-4 sm:p-8">
 <div class="max-w-4xl mx-auto space-y-8">
+
     <!-- 헤더 -->
-    <header
-        class="bg-white p-6 md:p-8 rounded-2xl shadow-xl border-t-4 border-indigo-600"
-    >
+    <header class="bg-white p-6 md:p-8 rounded-2xl shadow-xl border-t-4 border-indigo-600">
         <h1 class="text-3xl font-extrabold text-gray-900 mb-2">
             🎉 디스코드 사랑방 2026 신년회
         </h1>
-        <div
-            class="space-y-4 bg-indigo-50 p-4 rounded-xl border border-indigo-200"
-        >
+        <div class="space-y-4 bg-indigo-50 p-4 rounded-xl border border-indigo-200">
             <ul class="list-none text-gray-700 space-y-2 text-base">
                 <li>
                     <span class="font-bold text-indigo-800">🗓️ 일시:</span>
@@ -46,15 +43,11 @@
 
     <!-- 지도 섹션 -->
     <section class="bg-white p-6 rounded-2xl shadow-lg">
-        <h2
-            class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2"
-        >
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">
             📍 파티 장소: 감성 게임파티룸 모꼬지 강남점
         </h2>
 
-        <div
-            class="aspect-video overflow-hidden rounded-xl shadow-md mb-4 flex items-center justify-center bg-gray-100"
-        >
+        <div class="aspect-video overflow-hidden rounded-xl shadow-md mb-4 flex items-center justify-center bg-gray-100">
             <img
                 id="map-image"
                 src="https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/1763996729377_clipboard-image.jpg?alt=media&token=75ea6689-63bb-4f95-8654-e7feaf5bcca5"
@@ -64,23 +57,19 @@
             />
         </div>
 
-        <div
-            class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mt-5"
-        >
+        <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mt-5">
             <a
                 href="#"
                 id="naver-map-btn"
                 target="_blank"
-                class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition"
-            >
+                class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">
                 네이버 지도
             </a>
             <a
                 href="#"
                 id="kakao-map-btn"
                 target="_blank"
-                class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-gray-900 bg-yellow-400 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 transition"
-            >
+                class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-gray-900 bg-yellow-400 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 transition">
                 카카오 맵
             </a>
         </div>
@@ -88,17 +77,12 @@
 
     <!-- 참가 신청 폼 -->
     <section class="bg-white p-6 rounded-2xl shadow-lg">
-        <h2
-            class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2"
-        >
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">
             📝 참가 신청
         </h2>
         <form onsubmit="handleFormSubmit(event)" class="space-y-4">
             <div>
-                <label
-                    for="name"
-                    class="block text-sm font-medium text-gray-700"
-                >
+                <label for="name" class="block text-sm font-medium text-gray-700">
                     필명 / 작품 <span class="text-red-500">*</span>
                 </label>
                 <input
@@ -114,8 +98,7 @@
             <button
                 type="submit"
                 id="submit-btn"
-                class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-300"
-            >
+                class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-300">
                 참가 신청하기
             </button>
         </form>
@@ -124,22 +107,13 @@
     <!-- 참가자 목록 -->
     <section class="bg-white rounded-2xl shadow-lg overflow-hidden">
         <div class="p-6 bg-indigo-50 border-b border-indigo-200">
-            <h2
-                class="text-2xl font-bold text-gray-800 flex items-baseline space-x-1"
-            >
+            <h2 class="text-2xl font-bold text-gray-800 flex items-baseline space-x-1">
                 <span>참가자 명단</span>
-                <span
-                    id="participant-count"
-                    class="text-indigo-600 text-3xl font-extrabold"
-                    >0</span
-                >
+                <span id="participant-count" class="text-indigo-600 text-3xl font-extrabold">0</span>
                 <span>명</span>
             </h2>
         </div>
-        <div
-            id="participant-list"
-            class="divide-y divide-gray-100"
-        >
+        <div id="participant-list" class="divide-y divide-gray-100">
             <div class="text-center p-8 text-gray-400">
                 참가자 목록을 불러오는 중...
             </div>
@@ -149,19 +123,15 @@
     <!-- 토스트 -->
     <div
         id="toast-message"
-        class="fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4"
-    >
+        class="fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4">
         토스트 메시지
     </div>
 
     <!-- 삭제 비밀번호 모달 -->
     <div
         id="password-modal"
-        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-    >
-        <div
-            class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm space-y-4"
-        >
+        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm space-y-4">
             <h3 class="text-lg font-bold text-gray-800">
                 참가자 삭제 확인
             </h3>
@@ -175,15 +145,13 @@
             <div class="flex justify-end space-x-3">
                 <button
                     onclick="closePasswordModal()"
-                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
-                >
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
                     취소
                 </button>
                 <button
                     onclick="checkPassword()"
                     id="confirm-delete-btn"
-                    class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
-                >
+                    class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50">
                     삭제 확인
                 </button>
             </div>
@@ -193,15 +161,8 @@
 
 <!-- Firebase 및 앱 스크립트 -->
 <script type="module">
-    // ------------------------------
     // Firebase SDK import (모듈 CDN)
-    // ------------------------------
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import {
-        getAuth,
-        signInAnonymously,
-        onAuthStateChanged,
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import {
         getFirestore,
         collection,
@@ -214,9 +175,7 @@
         deleteDoc,
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // ------------------------------
-    // Firebase 설정 (질문에서 주신 값)
-    // ------------------------------
+    // Firebase 설정
     const firebaseConfig = {
         apiKey: "AIzaSyBKdlRRmjuZbrARI0_eoFa8KMsnSIpqlNw",
         authDomain: "sin-nyeon-2026.firebaseapp.com",
@@ -227,15 +186,10 @@
         measurementId: "G-RF6CT40D5S",
     };
 
-    // 참가자 컬렉션 이름 (원하시면 여기만 바꾸시면 됩니다)
+    // Firestore 컬렉션 이름
     const PARTICIPANT_COLLECTION = "participants";
 
-    // ------------------------------
-    // 전역 상태
-    // ------------------------------
     let db;
-    let auth;
-    let userId = "anonymous";
     let participantToDeleteId = null;
 
     // 지도 버튼 세팅
@@ -245,9 +199,7 @@
 
         const naverBtn = document.getElementById("naver-map-btn");
         const kakaoBtn = document.getElementById("kakao-map-btn");
-
-        const kakaoPlaceUrl =
-            "https://place.map.kakao.com/1670851940";
+        const kakaoPlaceUrl = "https://place.map.kakao.com/1670851940";
 
         if (naverBtn) {
             naverBtn.href = `https://map.naver.com/v5/search/${encodedName}`;
@@ -265,9 +217,10 @@
         const successStyle = "bg-green-500 border-green-700";
         const errorStyle = "bg-red-500 border-red-700";
 
-        toast.className = `fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4 ${
-            type === "success" ? successStyle : errorStyle
-        }`;
+        toast.className =
+            `fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4 ${
+                type === "success" ? successStyle : errorStyle
+            }`;
 
         setTimeout(() => {
             toast.classList.remove("opacity-0");
@@ -280,10 +233,9 @@
         }, 3000);
     }
 
-    // 참가자 목록 렌더
+    // 참가자 목록 렌더링
     function renderParticipants(participants) {
-        const listContainer =
-            document.getElementById("participant-list");
+        const listContainer = document.getElementById("participant-list");
         const countEl = document.getElementById("participant-count");
 
         listContainer.innerHTML = "";
@@ -305,16 +257,12 @@
 
             item.innerHTML = `
                 <div class="flex items-center space-x-4 flex-1">
-                    <span class="font-bold text-indigo-600 text-lg w-6 text-center">${
-                        index + 1
-                    }</span>
+                    <span class="font-bold text-indigo-600 text-lg w-6 text-center">${index + 1}</span>
                     <div>
                         <p class="font-semibold text-gray-800">${p.name}</p>
                     </div>
                 </div>
-                <button onclick="requestDelete('${
-                    p.id
-                }')"
+                <button onclick="requestDelete('${p.id}')"
                         class="text-red-500 hover:text-red-700 p-2 rounded-full transition duration-150 flex-shrink-0"
                         title="참가자 삭제">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -324,23 +272,16 @@
                     </svg>
                 </button>
             `;
-
             listContainer.appendChild(item);
         });
     }
 
-    // 참가자 목록 로드 (실시간)
+    // 참가자 목록 실시간 로드
     function loadParticipants() {
         if (!db) return;
 
-        const participantsColRef = collection(
-            db,
-            PARTICIPANT_COLLECTION
-        );
-        const q = query(
-            participantsColRef,
-            orderBy("timestamp", "desc")
-        );
+        const participantsColRef = collection(db, PARTICIPANT_COLLECTION);
+        const q = query(participantsColRef, orderBy("timestamp", "desc"));
 
         onSnapshot(
             q,
@@ -356,18 +297,14 @@
                 renderParticipants(participants);
             },
             (error) => {
-                console.error(
-                    "참가자 목록을 불러오는 중 오류 발생:",
-                    error
-                );
-                document.getElementById(
-                    "participant-list"
-                ).innerHTML = `<p class="text-red-500 p-4">참가자 목록을 불러올 수 없습니다. 오류: ${error.message}</p>`;
+                console.error("참가자 목록 불러오기 오류:", error);
+                document.getElementById("participant-list").innerHTML =
+                    `<p class="text-red-500 p-4">참가자 목록을 불러올 수 없습니다. 오류: ${error.message}</p>`;
             }
         );
     }
 
-    // 폼 제출 핸들러 (전역)
+    // 폼 제출 처리
     window.handleFormSubmit = async function (event) {
         event.preventDefault();
 
@@ -376,19 +313,13 @@
         const name = nameInput.value.trim();
 
         if (!name) {
-            showToast(
-                "필명 / 작품은 필수 입력 사항입니다.",
-                "error"
-            );
+            showToast("필명 / 작품은 필수 입력 사항입니다.", "error");
             return;
         }
 
         if (!db) {
-            showToast(
-                "데이터베이스 연결 준비 중입니다. 잠시 후 다시 시도해 주세요.",
-                "error"
-            );
-            console.error("db가 아직 초기화되지 않았습니다.");
+            showToast("DB 연결 전입니다. 잠시 후 다시 시도해 주세요.", "error");
+            console.error("db 미초기화");
             return;
         }
 
@@ -396,13 +327,9 @@
         submitButton.textContent = "등록 중...";
 
         try {
-            const participantsColRef = collection(
-                db,
-                PARTICIPANT_COLLECTION
-            );
+            const participantsColRef = collection(db, PARTICIPANT_COLLECTION);
             await addDoc(participantsColRef, {
                 name,
-                registeredBy: userId,
                 timestamp: serverTimestamp(),
             });
 
@@ -420,55 +347,39 @@
     // 삭제 요청
     window.requestDelete = function (participantId) {
         if (!db) {
-            showToast(
-                "데이터베이스 연결 준비 중입니다. 잠시 후 다시 시도해 주세요.",
-                "error"
-            );
-            console.error("db가 아직 초기화되지 않았습니다.");
+            showToast("DB 연결 전입니다. 잠시 후 다시 시도해 주세요.", "error");
+            console.error("db 미초기화");
             return;
         }
         participantToDeleteId = participantId;
-        document
-            .getElementById("password-modal")
-            .classList.remove("hidden");
-        const pwInput =
-            document.getElementById("delete-password");
+        document.getElementById("password-modal").classList.remove("hidden");
+        const pwInput = document.getElementById("delete-password");
         pwInput.value = "";
         pwInput.focus();
     };
 
     // 모달 닫기
     window.closePasswordModal = function () {
-        document
-            .getElementById("password-modal")
-            .classList.add("hidden");
+        document.getElementById("password-modal").classList.add("hidden");
         participantToDeleteId = null;
     };
 
     // 비밀번호 확인 후 삭제
     window.checkPassword = async function () {
-        const passwordInput =
-            document.getElementById("delete-password");
+        const passwordInput = document.getElementById("delete-password");
         const password = passwordInput.value.trim();
-        const confirmBtn =
-            document.getElementById("confirm-delete-btn");
+        const confirmBtn = document.getElementById("confirm-delete-btn");
         const PASSWORD_CODE = "1234";
 
         if (password !== PASSWORD_CODE) {
-            showToast(
-                "비밀번호가 일치하지 않습니다.",
-                "error"
-            );
+            showToast("비밀번호가 일치하지 않습니다.", "error");
             passwordInput.value = "";
             passwordInput.focus();
             return;
         }
 
         if (!participantToDeleteId) {
-            showToast(
-                "삭제할 참가자가 지정되지 않았습니다.",
-                "error"
-            );
+            showToast("삭제할 참가자가 지정되지 않았습니다.", "error");
             window.closePasswordModal();
             return;
         }
@@ -477,17 +388,10 @@
         confirmBtn.textContent = "삭제 중...";
 
         try {
-            const docRef = doc(
-                db,
-                PARTICIPANT_COLLECTION,
-                participantToDeleteId
-            );
+            const docRef = doc(db, PARTICIPANT_COLLECTION, participantToDeleteId);
             await deleteDoc(docRef);
 
-            showToast(
-                "참가자가 명단에서 삭제되었습니다.",
-                "success"
-            );
+            showToast("참가자가 명단에서 삭제되었습니다.", "success");
             window.closePasswordModal();
         } catch (e) {
             console.error("참가자 삭제 중 오류 발생:", e);
@@ -499,37 +403,19 @@
         }
     };
 
-    // Firebase 초기화
-    async function initFirebase() {
+    // Firebase 초기화 (Auth 없이)
+    function initFirebase() {
         try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
-            auth = getAuth(app);
-
-            await signInAnonymously(auth);
-
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    userId = user.uid;
-                    console.log(
-                        "Firebase 인증 성공, User ID:",
-                        userId
-                    );
-                    loadParticipants();
-                } else {
-                    console.log("인증되지 않음");
-                }
-            });
+            console.log("Firebase 초기화 완료");
+            loadParticipants();
         } catch (e) {
             console.error("Firebase 초기화 중 오류:", e);
-            showToast(
-                "Firebase 초기화 중 오류가 발생했습니다.",
-                "error"
-            );
+            showToast("Firebase 초기화 중 오류가 발생했습니다.", "error");
         }
     }
 
-    // 초기 실행
     setupMapButtons();
     initFirebase();
 </script>
