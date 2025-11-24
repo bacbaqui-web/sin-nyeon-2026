@@ -23,31 +23,32 @@
     <!-- Firebase SDK 및 로직 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, setLogLevel, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getStorage } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+        import {
+            getFirestore,
+            collection,
+            addDoc,
+            query,
+            onSnapshot,
+            orderBy,
+            serverTimestamp,
+            doc,
+            deleteDoc
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        setLogLevel('Debug');
-
+        // ===== 전역 상태 =====
         let db;
-        let auth;
-        let storage;
-        let userId = 'anonymous';
         let participantToDeleteId = null;
 
-        const COLLECTION_NAME = 'participants'; 
+        const COLLECTION_NAME = 'participants';
 
-        const firebaseConfigEnv = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        const userProvidedConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyBKdlRRmjuZbrARI0_eoFa8KMsnSIpqlNw",
             authDomain: "sin-nyeon-2026.firebaseapp.com",
             projectId: "sin-nyeon-2026",
             storageBucket: "sin-nyeon-2026.firebasestorage.app",
             messagingSenderId: "376174106968",
             appId: "1:376174106968:web:5c169c819724a4f4982d2d",
-            measurementId: "G-RF6CT40D5S" 
+            measurementId: "G-RF6CT40D5S"
         };
 
         const MAP_IMAGE_URL = 'https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/1763996729377_clipboard-image.jpg?alt=media&token=75ea6689-63bb-4f95-8654-e7feaf5bcca5';
@@ -67,224 +68,168 @@
         ];
 
         let currentGalleryIndex = 0;
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+        let isDragging = false;
 
-        // ==========================================
-        // 1. Firebase 초기화
-        // ==========================================
-        async function initFirebase() {
+        // ---------- Firebase 초기화 (Auth 없음) ----------
+        function initFirebase() {
             try {
-                const configToUse = (firebaseConfigEnv && Object.keys(firebaseConfigEnv).length > 0) ? firebaseConfigEnv : userProvidedConfig;
-                
-                if (!configToUse || Object.keys(configToUse).length === 0) {
-                    throw new Error("Firebase 설정이 없습니다.");
-                }
-
-                const app = initializeApp(configToUse);
+                const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
-                auth = getAuth(app);
-                storage = getStorage(app);
 
                 const mapImgEl = document.getElementById('map-image');
                 if (mapImgEl) mapImgEl.src = MAP_IMAGE_URL;
 
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        console.log("✅ 인증 성공:", userId);
-                        loadParticipants();
-                    } else {
-                        signInAnonymously(auth).catch(handleAuthError);
-                    }
-                });
-
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
+                console.log("✅ Firebase 초기화 완료");
+                loadParticipants();
             } catch (error) {
-                handleAuthError(error);
+                console.error("🔥 Firebase 초기화 오류:", error);
+                const listEl = document.getElementById('participant-list');
+                if (listEl) {
+                    listEl.innerHTML = `
+                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                            <strong class="font-bold">연결 오류!</strong>
+                            <span class="block sm:inline">오류 내용: ${error.message}</span>
+                        </div>
+                    `;
+                }
             }
         }
 
-        function handleAuthError(error) {
-            console.error("🔥 Firebase 인증/초기화 오류:", error);
-            const errorMsg = `
-                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                    <strong class="font-bold">연결 오류!</strong>
-                    <span class="block sm:inline">오류 내용: ${error.message}</span>
-                </div>
-            `;
-            const listEl = document.getElementById('participant-list');
-            if(listEl) listEl.innerHTML = errorMsg;
-        }
-
-        // ==========================================
-        // 2. 갤러리 로직 (드래그 스크롤 + 라이트박스)
-        // ==========================================
+        // ---------- 갤러리 초기화 ----------
         function initGallery() {
             const container = document.getElementById('gallery-container');
-            
-            // 이미지 동적 생성
+
             GALLERY_IMAGES.forEach((url, index) => {
                 const imgWrapper = document.createElement('div');
-                // flex-shrink-0: 줄어들지 않음, cursor-pointer: 클릭 가능 표시
                 imgWrapper.className = "flex-shrink-0 cursor-pointer select-none";
                 imgWrapper.innerHTML = `
-                    <img src="${url}" 
-                         alt="Gallery Image ${index + 1}" 
+                    <img src="${url}"
+                         alt="Gallery Image ${index + 1}"
                          draggable="false"
                          class="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-lg hover:opacity-80 transition shadow-sm border border-gray-200 pointer-events-none">
                 `;
-                // pointer-events-none을 이미지에 주어 드래그 시 고스트 이미지가 생기지 않게 하고, 
-                // 클릭 이벤트는 wrapper에서 처리합니다.
-                
-                // 클릭 이벤트 (드래그가 아닐 때만 모달 오픈)
                 imgWrapper.onclick = () => {
-                    if (!isDragging) {
-                        openGalleryModal(index);
-                    }
+                    if (!isDragging) openGalleryModal(index);
                 };
-
                 container.appendChild(imgWrapper);
             });
 
-            // 드래그 스크롤 이벤트 바인딩
             enableDragScroll(container);
         }
-
-        let isDown = false;
-        let startX;
-        let scrollLeft;
-        let isDragging = false; // 클릭 vs 드래그 구분 플래그
 
         function enableDragScroll(slider) {
             slider.addEventListener('mousedown', (e) => {
                 isDown = true;
-                isDragging = false; // 드래그 시작 전엔 false
+                isDragging = false;
                 slider.classList.add('cursor-grabbing');
                 slider.classList.remove('cursor-grab');
                 startX = e.pageX - slider.offsetLeft;
                 scrollLeft = slider.scrollLeft;
             });
-            
+
             slider.addEventListener('mouseleave', () => {
                 isDown = false;
                 slider.classList.remove('cursor-grabbing');
                 slider.classList.add('cursor-grab');
             });
-            
+
             slider.addEventListener('mouseup', () => {
                 isDown = false;
                 slider.classList.remove('cursor-grabbing');
                 slider.classList.add('cursor-grab');
-                
-                // 드래그가 끝났을 때 isDragging 상태를 잠시 유지했다가 초기화하면 더 안전하지만,
-                // 여기서는 mousemove에서 이동 거리가 있을 때만 isDragging을 true로 만듭니다.
-                setTimeout(() => isDragging = false, 10); 
+                setTimeout(() => (isDragging = false), 10);
             });
-            
+
             slider.addEventListener('mousemove', (e) => {
                 if (!isDown) return;
                 e.preventDefault();
                 const x = e.pageX - slider.offsetLeft;
-                const walk = (x - startX) * 2; // 스크롤 속도
-                
-                // 약간의 움직임은 클릭으로 허용하기 위해 5px 이상 움직였을 때만 드래그로 간주
+                const walk = (x - startX) * 2;
                 if (Math.abs(walk) > 5) {
                     isDragging = true;
                 }
-                
                 slider.scrollLeft = scrollLeft - walk;
             });
         }
 
-        // 모달 열기
-        window.openGalleryModal = function(index) {
+        // 라이트박스 관련 전역 함수
+        window.openGalleryModal = function (index) {
             currentGalleryIndex = index;
             const modal = document.getElementById('gallery-modal');
             const modalImage = document.getElementById('gallery-modal-image');
-            
             modalImage.src = GALLERY_IMAGES[currentGalleryIndex];
             modal.classList.remove('hidden');
         };
 
-        // 모달 닫기 (배경 클릭 시 호출됨)
-        window.closeGalleryModal = function() {
+        window.closeGalleryModal = function () {
             const modal = document.getElementById('gallery-modal');
             const modalImage = document.getElementById('gallery-modal-image');
             modal.classList.add('hidden');
             modalImage.src = '';
         };
 
-        // 다음 이미지 보기 (이미지 클릭 시 호출됨)
-        window.showNextImage = function(event) {
-            // 이벤트 전파 중단 (배경 클릭 이벤트가 실행되지 않도록)
+        window.showNextImage = function (event) {
             if (event) event.stopPropagation();
-            
             currentGalleryIndex = (currentGalleryIndex + 1) % GALLERY_IMAGES.length;
             const modalImage = document.getElementById('gallery-modal-image');
             modalImage.src = GALLERY_IMAGES[currentGalleryIndex];
         };
 
-        // ==========================================
-        // 3. 지도 버튼 설정
-        // ==========================================
+        // ---------- 지도 버튼 ----------
         function setupMapButtons() {
             const searchName = '감성 게임파티룸 모꼬지 강남점';
             const encodedName = encodeURIComponent(searchName);
             const naverBtn = document.getElementById('naver-map-btn');
             const kakaoBtn = document.getElementById('kakao-map-btn');
-            
+
             if (naverBtn) naverBtn.href = `https://map.naver.com/v5/search/${encodedName}`;
             if (kakaoBtn) kakaoBtn.href = 'https://place.map.kakao.com/1670851940';
         }
 
-        // ==========================================
-        // 4. 데이터 로드 (Firestore)
-        // ==========================================
+        // ---------- 참가자 로드 ----------
         function loadParticipants() {
             if (!db) return;
 
             const participantsColRef = collection(db, COLLECTION_NAME);
             const q = query(participantsColRef, orderBy("timestamp", "desc"));
 
-            onSnapshot(q, (snapshot) => {
-                const participants = [];
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    participants.push({
-                        id: doc.id,
-                        ...data,
-                        timestamp: data.timestamp ? data.timestamp.toDate() : new Date(0)
+            onSnapshot(
+                q,
+                (snapshot) => {
+                    const participants = [];
+                    snapshot.forEach((docSnap) => {
+                        const data = docSnap.data();
+                        participants.push({
+                            id: docSnap.id,
+                            ...data,
+                            timestamp: data.timestamp ? data.timestamp.toDate() : new Date(0)
+                        });
                     });
-                });
-
-                renderParticipants(participants);
-            }, (error) => {
-                console.error("🔥 데이터 불러오기 실패:", error);
-                
-                let errorText = "데이터를 불러올 수 없습니다.";
-                if (error.code === 'permission-denied') {
-                    errorText = "권한이 거부되었습니다.";
+                    renderParticipants(participants);
+                },
+                (error) => {
+                    console.error("🔥 데이터 불러오기 실패:", error);
+                    let errorText = "데이터를 불러올 수 없습니다.";
+                    if (error.code === 'permission-denied') {
+                        errorText = "권한이 거부되었습니다.";
+                    }
+                    const listEl = document.getElementById('participant-list');
+                    if (listEl) {
+                        listEl.innerHTML = `
+                            <div class="text-center p-4 text-red-500 font-bold">
+                                ⚠️ ${errorText}<br>
+                                <span class="text-xs text-gray-500 font-normal">(${error.message})</span>
+                            </div>
+                        `;
+                    }
                 }
-
-                const listEl = document.getElementById('participant-list');
-                if(listEl) {
-                    listEl.innerHTML = `
-                        <div class="text-center p-4 text-red-500 font-bold">
-                            ⚠️ ${errorText}<br>
-                            <span class="text-xs text-gray-500 font-normal">(${error.message})</span>
-                        </div>
-                    `;
-                }
-            });
+            );
         }
 
-        // ==========================================
-        // 5. 화면 렌더링 (참가자 목록)
-        // ==========================================
+        // ---------- 참가자 렌더 ----------
         function renderParticipants(participants) {
             const listContainer = document.getElementById('participant-list');
             const countEl = document.getElementById('participant-count');
@@ -303,9 +248,10 @@
 
             participants.forEach((p, index) => {
                 const item = document.createElement('div');
-                const displayNum = index + 1; 
+                const displayNum = index + 1;
 
-                item.className = 'flex justify-between items-center p-4 bg-white border-b border-gray-100 last:border-b-0 transition duration-300 hover:bg-indigo-50/50';
+                item.className =
+                    'flex justify-between items-center p-4 bg-white border-b border-gray-100 last:border-b-0 transition duration-300 hover:bg-indigo-50/50';
                 item.innerHTML = `
                     <div class="flex items-center space-x-4 flex-1">
                         <span class="font-bold text-indigo-600 text-lg w-6 text-center">${displayNum}</span>
@@ -313,11 +259,12 @@
                             <p class="font-semibold text-gray-800">${p.name}</p>
                         </div>
                     </div>
-                    <button onclick="window.requestDelete('${p.id}')" 
+                    <button onclick="window.requestDelete('${p.id}')"
                             class="text-red-500 hover:text-red-700 p-2 rounded-full transition duration-150 flex-shrink-0"
                             title="참가자 삭제">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 `;
@@ -325,10 +272,8 @@
             });
         }
 
-        // ==========================================
-        // 6. 폼 제출 및 삭제 (비밀번호)
-        // ==========================================
-        window.handleFormSubmit = async function(event) {
+        // ---------- 폼 제출 ----------
+        window.handleFormSubmit = async function (event) {
             event.preventDefault();
             const nameInput = document.getElementById('name');
             const submitButton = document.getElementById('submit-btn');
@@ -349,11 +294,10 @@
 
             try {
                 await addDoc(collection(db, COLLECTION_NAME), {
-                    name: name, 
-                    contact: '', 
-                    comment: '', 
-                    registeredBy: userId, 
-                    timestamp: serverTimestamp() 
+                    name,
+                    contact: '',
+                    comment: '',
+                    timestamp: serverTimestamp()
                 });
                 showToast("참가 신청이 완료되었습니다!", "success");
                 nameInput.value = '';
@@ -366,7 +310,8 @@
             }
         };
 
-        window.requestDelete = function(participantId) {
+        // ---------- 삭제 + 비밀번호 ----------
+        window.requestDelete = function (participantId) {
             participantToDeleteId = participantId;
             document.getElementById('password-modal').classList.remove('hidden');
             const pwInput = document.getElementById('delete-password');
@@ -374,22 +319,22 @@
             pwInput.focus();
         };
 
-        window.closePasswordModal = function() {
+        window.closePasswordModal = function () {
             document.getElementById('password-modal').classList.add('hidden');
             participantToDeleteId = null;
         };
 
-        window.checkPassword = async function() {
+        window.checkPassword = async function () {
             const passwordInput = document.getElementById('delete-password');
             const confirmBtn = document.getElementById('confirm-delete-btn');
-            
+
             if (passwordInput.value.trim() !== '1234') {
                 showToast("비밀번호가 일치하지 않습니다.", "error");
                 passwordInput.value = '';
                 passwordInput.focus();
                 return;
             }
-            
+
             if (!participantToDeleteId) {
                 window.closePasswordModal();
                 return;
@@ -404,6 +349,7 @@
                 showToast("삭제되었습니다.", "success");
                 window.closePasswordModal();
             } catch (e) {
+                console.error("삭제 오류:", e);
                 showToast(`삭제 오류: ${e.message}`, "error");
             } finally {
                 confirmBtn.disabled = false;
@@ -411,22 +357,32 @@
                 participantToDeleteId = null;
             }
         };
-        
+
+        // ---------- 토스트 ----------
         function showToast(message, type) {
             const toast = document.getElementById('toast-message');
             toast.textContent = message;
             const successStyle = "bg-green-500 border-green-700";
             const errorStyle = "bg-red-500 border-red-700";
-            
-            toast.className = `fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4 ${type === 'success' ? successStyle : errorStyle}`;
-            setTimeout(() => { toast.classList.remove('opacity-0'); toast.classList.add('opacity-100'); }, 10);
-            setTimeout(() => { toast.classList.remove('opacity-100'); toast.classList.add('opacity-0'); }, 3000);
+
+            toast.className =
+                `fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4 ${
+                    type === 'success' ? successStyle : errorStyle
+                }`;
+            setTimeout(() => {
+                toast.classList.remove('opacity-0');
+                toast.classList.add('opacity-100');
+            }, 10);
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 3000);
         }
 
-        // 앱 시작
+        // ---------- 시작 ----------
         setupMapButtons();
         initGallery();
-        initFirebase(); 
+        initFirebase();
     </script>
     
     <div class="max-w-4xl mx-auto space-y-8">
@@ -445,11 +401,11 @@
             </div>
         </header>
 
-        <!-- 갤러리 섹션 (제목 삭제됨, 드래그 스크롤 적용) -->
+        <!-- 갤러리 섹션 -->
         <section class="bg-white p-6 rounded-2xl shadow-lg">
-            <!-- 갤러리 컨테이너: 이미지가 JS로 동적 생성됩니다 -->
-            <div id="gallery-container" class="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide cursor-grab select-none">
-                <!-- JS로 주입됨 -->
+            <div id="gallery-container"
+                 class="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide cursor-grab select-none">
+                <!-- JS로 이미지가 주입됩니다 -->
             </div>
         </section>
 
@@ -457,16 +413,18 @@
         <section class="bg-white p-6 rounded-2xl shadow-lg">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📍 파티 장소: 감성 게임파티룸 모꼬지 강남점</h2>
             <div class="aspect-w-16 aspect-h-9 overflow-hidden rounded-xl shadow-md mb-4 flex items-center justify-center bg-gray-100">
-                <img 
+                <img
                     id="map-image"
-                    src="" 
+                    src=""
                     alt="감성 게임파티룸 모꼬지 강남점 위치 이미지"
                     class="w-full h-auto object-cover rounded-xl"
                 />
             </div>
             <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mt-5">
-                <a href="#" id="naver-map-btn" target="_blank" class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">네이버 지도</a>
-                <a href="#" id="kakao-map-btn" target="_blank" class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-gray-900 bg-yellow-400 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 transition duration-150 ease-in-out">카카오 맵</a>
+                <a href="#" id="naver-map-btn" target="_blank"
+                   class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">네이버 지도</a>
+                <a href="#" id="kakao-map-btn" target="_blank"
+                   class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-gray-900 bg-yellow-400 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 transition duration-150 ease-in-out">카카오 맵</a>
             </div>
         </section>
 
@@ -476,9 +434,14 @@
             <form onsubmit="handleFormSubmit(event)" class="space-y-4">
                 <div>
                     <label for="name" class="block text-sm font-medium text-gray-700">필명 / 작품 <span class="text-red-500">*</span></label>
-                    <input type="text" id="name" name="name" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border" placeholder="삼두기 / 슈퍼병신아카데미아" maxlength="70">
+                    <input type="text" id="name" name="name" required
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+                           placeholder="삼두기 / 슈퍼병신아카데미아" maxlength="70">
                 </div>
-                <button type="submit" id="submit-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out disabled:bg-indigo-300">참가 신청하기</button>
+                <button type="submit" id="submit-btn"
+                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out disabled:bg-indigo-300">
+                    참가 신청하기
+                </button>
             </form>
         </section>
 
@@ -497,31 +460,44 @@
         </section>
 
         <!-- 토스트 메시지 -->
-        <div id="toast-message" class="fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4">토스트 메시지</div>
+        <div id="toast-message"
+             class="fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4">
+            토스트 메시지
+        </div>
 
         <!-- 비밀번호 모달 -->
-        <div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div id="password-modal"
+             class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm space-y-4">
                 <h3 class="text-lg font-bold text-gray-800">참가자 삭제 확인</h3>
                 <p class="text-sm font-bold text-gray-700">비밀번호</p>
-                <input type="password" id="delete-password" placeholder="비밀번호 입력" class="w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                <input type="password" id="delete-password" placeholder="비밀번호 입력"
+                       class="w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
                 <div class="flex justify-end space-x-3">
-                    <button onclick="closePasswordModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">취소</button>
-                    <button onclick="checkPassword()" id="confirm-delete-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50">삭제 확인</button>
+                    <button onclick="closePasswordModal()"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
+                        취소
+                    </button>
+                    <button onclick="checkPassword()" id="confirm-delete-btn"
+                            class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50">
+                        삭제 확인
+                    </button>
                 </div>
             </div>
         </div>
 
         <!-- 갤러리 미리보기 모달 (LightBox) -->
-        <!-- 배경 클릭 시 닫기 (onclick="closeGalleryModal()") -->
-        <div id="gallery-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4 cursor-pointer" onclick="closeGalleryModal()">
-            <button class="absolute top-4 right-4 text-white text-3xl font-bold hover:text-gray-300 z-50">&times;</button>
-            <!-- 이미지 클릭 시 다음 이미지 보기 (onclick="showNextImage(event)") -->
-            <img id="gallery-modal-image" src="" alt="크게 보기" 
-                 class="max-w-full max-h-full rounded-lg shadow-2xl object-contain cursor-pointer" 
+        <div id="gallery-modal"
+             class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4 cursor-pointer"
+             onclick="closeGalleryModal()">
+            <button
+                class="absolute top-4 right-4 text-white text-3xl font-bold hover:text-gray-300 z-50">&times;
+            </button>
+            <img id="gallery-modal-image" src="" alt="크게 보기"
+                 class="max-w-full max-h-full rounded-lg shadow-2xl object-contain cursor-pointer"
                  onclick="showNextImage(event)">
         </div>
-        
+
     </div>
 </body>
 </html>
