@@ -3,38 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 제목 수정: "디스코드 사랑방 2026 신년회" --><title>디스코드 사랑방 2026 신년회</title>
-    <!-- Tailwind CSS CDN 로드 --><script src="https://cdn.tailwindcss.com"></script>
-    <!-- Inter 폰트 설정 (Tailwind 기본 폰트) --><style>
+    <title>디스코드 사랑방 2026 신년회</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
         body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
     </style>
 </head>
 <body class="p-4 sm:p-8">
 
-    <!-- Firebase SDK 로드 --><script type="module">
+    <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // doc과 deleteDoc을 추가했습니다.
         import { getFirestore, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, setLogLevel, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
-
-        // Firestore 로깅 레벨 설정 (디버깅용)
+        // 디버깅을 위해 로그 레벨 설정
         setLogLevel('Debug');
 
-        // 전역 변수 초기화
+        // 전역 변수
         let db;
         let auth;
-        let storage; // storage 변수 추가
-        let userId = 'anonymous'; // 초기값 설정
-        let participantToDeleteId = null; // 삭제할 참가자 ID를 임시 저장
+        let storage;
+        let userId = 'anonymous';
+        let participantToDeleteId = null;
 
-        // Canvas 환경 변수 로드
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // ★ 중요: 경로를 단순화했습니다. (appId 제거)
+        // 이제 artifacts/... 복잡한 경로 대신 'participants'라는 단순한 이름을 사용합니다.
+        const COLLECTION_NAME = 'participants'; 
+
+        // Canvas 환경 변수 로드 (배포 시엔 null이 됨)
         const firebaseConfigEnv = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // 사용자가 제공한 하드코딩된 Firebase Config (우선 사용)
+        // 사용자 제공 Config
         const userProvidedConfig = {
             apiKey: "AIzaSyBKdlRRmjuZbrARI0_eoFa8KMsnSIpqlNw",
             authDomain: "sin-nyeon-2026.firebaseapp.com",
@@ -45,87 +46,77 @@
             measurementId: "G-RF6CT40D5S" 
         };
 
-        // Firebase Storage 이미지 URL 설정
+        // 이미지 URL
         const MAP_IMAGE_URL = 'https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/1763996729377_clipboard-image.jpg?alt=media&token=75ea6689-63bb-4f95-8654-e7feaf5bcca5';
 
-
-        /**
-         * Firebase 초기화 및 인증 처리
-         */
         async function initFirebase() {
-            // 환경 변수가 있으면 그것을 사용하고, 없거나 비어있으면 사용자가 제공한 Config 사용
-            const configToUse = (firebaseConfigEnv && Object.keys(firebaseConfigEnv).length > 0) ? firebaseConfigEnv : userProvidedConfig;
-            
-            if (!configToUse || Object.keys(configToUse).length === 0) {
-                console.error("Firebase config가 정의되지 않았습니다. 데이터를 저장할 수 없습니다.");
-                return;
-            }
-
-            const app = initializeApp(configToUse);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            storage = getStorage(app); 
-
-            // 인증 상태 리스너 설정
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    userId = user.uid;
-                    console.log("Firebase 인증 성공, User ID:", userId);
-                    loadParticipants();
-                } else {
-                    userId = crypto.randomUUID();
-                    console.log("인증 실패 또는 로그아웃. 임시 User ID 사용:", userId);
-                }
-            });
-
-            // 커스텀 토큰으로 로그인 시도 또는 익명 로그인
             try {
+                const configToUse = (firebaseConfigEnv && Object.keys(firebaseConfigEnv).length > 0) ? firebaseConfigEnv : userProvidedConfig;
+                
+                if (!configToUse || Object.keys(configToUse).length === 0) {
+                    throw new Error("Firebase 설정이 없습니다.");
+                }
+
+                const app = initializeApp(configToUse);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                storage = getStorage(app); 
+
+                // 인증 상태 감지
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("✅ 인증 성공:", userId);
+                        loadParticipants();
+                    } else {
+                        console.log("⚠️ 사용자 없음, 로그인 시도 중...");
+                        // 로그아웃 상태라면 다시 로그인 시도
+                        signInAnonymously(auth).catch(handleAuthError);
+                    }
+                });
+
+                // 초기 로그인 시도
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     await signInAnonymously(auth);
                 }
+
+                document.getElementById('map-image').src = MAP_IMAGE_URL;
+
             } catch (error) {
-                console.error("Firebase 인증 중 오류 발생:", error);
+                handleAuthError(error);
             }
-            
-            // 지도 이미지 URL을 바로 적용
-            document.getElementById('map-image').src = MAP_IMAGE_URL;
         }
 
-        /**
-         * 지도 버튼 URL 동적 생성 (인코딩 문제 해결)
-         */
+        function handleAuthError(error) {
+            console.error("🔥 Firebase 인증 오류:", error);
+            const errorMsg = `
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <strong class="font-bold">연결 오류!</strong>
+                    <span class="block sm:inline">페이지를 새로고침 해보세요.<br>오류 내용: ${error.message}</span>
+                </div>
+            `;
+            document.getElementById('participant-list').innerHTML = errorMsg;
+        }
+
         function setupMapButtons() {
             const searchName = '감성 게임파티룸 모꼬지 강남점';
             const encodedName = encodeURIComponent(searchName);
-
             const naverBtn = document.getElementById('naver-map-btn');
             const kakaoBtn = document.getElementById('kakao-map-btn');
             
-            // 카카오맵 고정 URL
-            const kakaoPlaceUrl = 'https://place.map.kakao.com/1670851940';
-
-            // 네이버 지도 URL 설정 (검색 유지)
-            if (naverBtn) {
-                naverBtn.href = `https://map.naver.com/v5/search/${encodedName}`;
-            }
-            // 카카오맵 URL 설정 (고정된 장소 ID로 변경)
-            if (kakaoBtn) {
-                kakaoBtn.href = kakaoPlaceUrl;
-            }
+            if (naverBtn) naverBtn.href = `https://map.naver.com/v5/search/${encodedName}`;
+            if (kakaoBtn) kakaoBtn.href = 'https://place.map.kakao.com/1670851940';
         }
 
-
-        /**
-         * 참가자 목록을 실시간으로 가져와 화면에 렌더링
-         */
         function loadParticipants() {
-            if (!db) return; // DB 객체가 없으면 실행하지 않음
+            if (!db) return;
 
-            const participantCollectionPath = `/artifacts/${appId}/public/data/new_year_party_participants`;
-            const participantsColRef = collection(db, participantCollectionPath);
-
+            // ★ 수정됨: 단순화된 컬렉션 이름 사용
+            const participantsColRef = collection(db, COLLECTION_NAME);
+            
+            // 쿼리 생성 (단순화)
             const q = query(participantsColRef);
 
             onSnapshot(q, (snapshot) => {
@@ -139,28 +130,32 @@
                     });
                 });
 
-                // JavaScript에서 등록 시간(timestamp) 기준 내림차순으로 정렬 (최신순)
                 participants.sort((a, b) => b.timestamp - a.timestamp);
-
-                // 화면 업데이트
                 renderParticipants(participants);
             }, (error) => {
-                console.error("참가자 목록을 불러오는 중 오류 발생:", error);
-                document.getElementById('participant-list').innerHTML = `<p class="text-red-500 p-4">참가자 목록을 불러올 수 없습니다. 오류: ${error.message}</p>`;
+                // ★ 중요: 권한 오류 발생 시 화면에 표시
+                console.error("🔥 데이터 불러오기 실패:", error);
+                
+                let errorText = "데이터를 불러올 수 없습니다.";
+                if (error.code === 'permission-denied') {
+                    errorText = "권한이 거부되었습니다. (Firestore 규칙을 확인해주세요)";
+                } else if (error.code === 'unavailable') {
+                    errorText = "오프라인 상태이거나 연결이 불안정합니다.";
+                }
+
+                document.getElementById('participant-list').innerHTML = `
+                    <div class="text-center p-4 text-red-500 font-bold">
+                        ⚠️ ${errorText}<br>
+                        <span class="text-xs text-gray-500 font-normal">(${error.message})</span>
+                    </div>
+                `;
             });
         }
 
-        /**
-         * 참가자 데이터를 받아 HTML 리스트를 갱신
-         * @param {Array} participants - 참가자 객체 배열
-         */
         function renderParticipants(participants) {
             const listContainer = document.getElementById('participant-list');
-            listContainer.innerHTML = ''; // 기존 목록 초기화
-
-            // 헤더 카운트 업데이트
+            listContainer.innerHTML = '';
             document.getElementById('participant-count').textContent = participants.length;
-
 
             if (participants.length === 0) {
                 listContainer.innerHTML = `
@@ -173,38 +168,28 @@
 
             participants.forEach((p, index) => {
                 const item = document.createElement('div');
-                
                 item.className = 'flex justify-between items-center p-4 bg-white border-b border-gray-100 last:border-b-0 transition duration-300 hover:bg-indigo-50/50';
                 item.innerHTML = `
                     <div class="flex items-center space-x-4 flex-1">
-                        <!-- 순서 번호 -->
                         <span class="font-bold text-indigo-600 text-lg w-6 text-center">${index + 1}</span>
                         <div>
-                            <!-- 필명 / 작품 표시 -->
                             <p class="font-semibold text-gray-800">${p.name}</p>
                         </div>
                     </div>
-                    <!-- 삭제 버튼 (X 아이콘) -->
                     <button onclick="requestDelete('${p.id}')" 
                             class="text-red-500 hover:text-red-700 p-2 rounded-full transition duration-150 flex-shrink-0"
                             title="참가자 삭제">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 `;
                 listContainer.appendChild(item);
             });
         }
 
-        /**
-         * 폼 제출 처리
-         */
         window.handleFormSubmit = async function(event) {
             event.preventDefault();
-
             const nameInput = document.getElementById('name');
             const submitButton = document.getElementById('submit-btn');
-
-            // '필명 / 작품' 값만 가져옵니다.
             const name = nameInput.value.trim();
 
             if (!name) {
@@ -212,31 +197,22 @@
                 return;
             }
 
-            if (!db) {
-                showToast("데이터베이스 연결 준비 중입니다. 잠시 후 다시 시도해 주세요.", "error");
-                return;
-            }
-
             submitButton.disabled = true;
             submitButton.textContent = '등록 중...';
 
             try {
-                const participantCollectionPath = `/artifacts/${appId}/public/data/new_year_party_participants`;
-                await addDoc(collection(db, participantCollectionPath), {
+                // ★ 수정됨: 단순화된 컬렉션 이름 사용
+                await addDoc(collection(db, COLLECTION_NAME), {
                     name: name, 
                     contact: '', 
                     comment: '', 
                     registeredBy: userId, 
                     timestamp: serverTimestamp() 
                 });
-
                 showToast("참가 신청이 완료되었습니다!", "success");
-
-                // 폼 초기화
                 nameInput.value = '';
-
             } catch (e) {
-                console.error("참가 신청 중 오류 발생: ", e);
+                console.error("작성 실패:", e);
                 showToast(`신청 오류: ${e.message}`, "error");
             } finally {
                 submitButton.disabled = false;
@@ -244,66 +220,42 @@
             }
         };
 
-        // =======================================================
-        // 참가자 삭제 로직 (비밀번호 모달)
-        // =======================================================
-
-        /**
-         * 삭제 요청 (X 버튼 클릭 시)
-         */
+        // 삭제 로직
         window.requestDelete = function(participantId) {
-            if (!db) {
-                showToast("데이터베이스 연결 준비 중입니다. 잠시 후 다시 시도해 주세요.", "error");
-                return;
-            }
             participantToDeleteId = participantId;
             document.getElementById('password-modal').classList.remove('hidden');
             document.getElementById('delete-password').value = '';
             document.getElementById('delete-password').focus();
         };
 
-        /**
-         * 비밀번호 확인 모달 닫기
-         */
         window.closePasswordModal = function() {
             document.getElementById('password-modal').classList.add('hidden');
             participantToDeleteId = null;
         };
 
-        /**
-         * 비밀번호 확인 및 삭제 진행
-         */
         window.checkPassword = async function() {
             const passwordInput = document.getElementById('delete-password');
-            const password = passwordInput.value.trim();
             const confirmBtn = document.getElementById('confirm-delete-btn');
-            const PASSWORD_CODE = '1234'; // 요청된 비밀번호
-
-            if (password !== PASSWORD_CODE) {
+            
+            if (passwordInput.value.trim() !== '1234') {
                 showToast("비밀번호가 일치하지 않습니다.", "error");
                 passwordInput.value = '';
                 passwordInput.focus();
                 return;
             }
             
-            if (!participantToDeleteId) {
-                showToast("삭제할 참가자가 지정되지 않았습니다.", "error");
-                closePasswordModal();
-                return;
-            }
+            if (!participantToDeleteId) return closePasswordModal();
 
             confirmBtn.disabled = true;
             confirmBtn.textContent = '삭제 중...';
 
             try {
-                const participantCollectionPath = `/artifacts/${appId}/public/data/new_year_party_participants`;
-                const docRef = doc(db, participantCollectionPath, participantToDeleteId);
-                await deleteDoc(docRef);
-
-                showToast("참가자가 명단에서 삭제되었습니다.", "success");
+                // ★ 수정됨: 단순화된 컬렉션 이름 사용
+                await deleteDoc(doc(db, COLLECTION_NAME, participantToDeleteId));
+                showToast("삭제되었습니다.", "success");
                 closePasswordModal();
             } catch (e) {
-                console.error("참가자 삭제 중 오류 발생: ", e);
+                console.error("삭제 실패:", e);
                 showToast(`삭제 오류: ${e.message}`, "error");
             } finally {
                 confirmBtn.disabled = false;
@@ -311,124 +263,73 @@
                 participantToDeleteId = null;
             }
         };
-        // =======================================================
         
-        /**
-         * 사용자 지정 토스트 메시지 표시
-         */
         function showToast(message, type) {
             const toast = document.getElementById('toast-message');
             toast.textContent = message;
-            
-            // 타입에 따른 스타일 설정
             const successStyle = "bg-green-500 border-green-700";
             const errorStyle = "bg-red-500 border-red-700";
-            
             toast.className = `fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4 ${type === 'success' ? successStyle : errorStyle}`;
-            
-            // 애니메이션을 위해 잠시 기다린 후 opacity 설정
-            setTimeout(() => {
-                toast.classList.remove('opacity-0');
-                toast.classList.add('opacity-100');
-            }, 10);
-
-            // 3초 후 사라지게 처리
-            setTimeout(() => {
-                toast.classList.remove('opacity-100');
-                toast.classList.add('opacity-0');
-            }, 3000);
+            setTimeout(() => { toast.classList.remove('opacity-0'); toast.classList.add('opacity-100'); }, 10);
+            setTimeout(() => { toast.classList.remove('opacity-100'); toast.classList.add('opacity-0'); }, 3000);
         }
 
-        // 페이지 로드 시 Firebase 초기화 및 지도 버튼 설정 시작
         initFirebase();
         setupMapButtons();
     </script>
     
     <div class="max-w-4xl mx-auto space-y-8">
-        
-        <!-- 헤더 및 공지사항 섹션 --><header class="bg-white p-6 md:p-8 rounded-2xl shadow-xl border-t-4 border-indigo-600">
-            <!-- H1 수정 --><h1 class="text-3xl font-extrabold text-gray-900 mb-2">
-                🎉 디스코드 사랑방 2026 신년회
-            </h1>
-            
-            <!-- 공지 내용 및 목록 수정 --><div class="space-y-4 bg-indigo-50 p-4 rounded-xl border border-indigo-200">
+        <header class="bg-white p-6 md:p-8 rounded-2xl shadow-xl border-t-4 border-indigo-600">
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-2">🎉 디스코드 사랑방 2026 신년회</h1>
+            <div class="space-y-4 bg-indigo-50 p-4 rounded-xl border border-indigo-200">
                 <ul class="list-none text-gray-700 space-y-2 text-base">
-                    <!-- 일시 수정 --><li><span class="font-bold text-indigo-800">🗓️ 일시:</span> 2026년 1월 3일 (토) 저녁 7시 ~ 1월 4일 아침 9시</li>
-                    <!-- 장소 항목은 사용자 요청에 따라 삭제됨 --><!-- 참가비 수정 --><li><span class="font-bold text-indigo-800">💰 참가비:</span> 30,000원</li>
-                    <!-- 문의 수정 --><li><span class="font-bold text-indigo-800">📞 문의:</span> 박바퀴(박병욱) (010-5140-4640)</li>
+                    <li><span class="font-bold text-indigo-800">🗓️ 일시:</span> 2026년 1월 3일 (토) 저녁 7시 ~ 1월 4일 아침 9시</li>
+                    <li><span class="font-bold text-indigo-800">💰 참가비:</span> 30,000원</li>
+                    <li><span class="font-bold text-indigo-800">📞 문의:</span> 박바퀴(박병욱) (010-5140-4640)</li>
                 </ul>
             </div>
         </header>
 
-        <!-- 지도 섹션: 이미지 플레이스홀더 및 검색 버튼 추가 --><section class="bg-white p-6 rounded-2xl shadow-lg">
-            <!-- H2 제목: '감성 게임파티룸 모꼬지 강남점' 반영 --><h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📍 파티 장소: 감성 게임파티룸 모꼬지 강남점</h2>
-            
-            <!-- 설명 문구 삭제됨 -->
-
+        <section class="bg-white p-6 rounded-2xl shadow-lg">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📍 파티 장소: 감성 게임파티룸 모꼬지 강남점</h2>
             <div class="aspect-w-16 aspect-h-9 overflow-hidden rounded-xl shadow-md mb-4 flex items-center justify-center bg-gray-100">
-                <!-- 지도 이미지 삽입. 이제 사용자님의 스토리지 URL로 설정됩니다. --><img 
-                    id="map-image"
-                    src="https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/1763996729377_clipboard-image.jpg?alt=media&token=75ea6689-63bb-4f95-8654-e7feaf5bcca5" 
-                    alt="감성 게임파티룸 모꼬지 강남점 위치 이미지"
-                    onerror="this.onerror=null; this.src='https://placehold.co/800x400/4F46E5/ffffff?text=Map+Image+Load+Failed'"
-                    class="w-full h-auto object-cover rounded-xl"
-                />
+                <img id="map-image" src="" alt="감성 게임파티룸 모꼬지 강남점 위치 이미지" class="w-full h-auto object-cover rounded-xl" />
             </div>
-            
-            <!-- 지도 검색 바로가기 버튼 그룹 (URL은 JavaScript로 설정됨) --><div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mt-5">
-                <!-- 네이버 지도 검색 버튼 (JavaScript에서 URL 설정) --><a href="#" id="naver-map-btn" target="_blank" 
-                   class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">
-                    네이버 지도
-                </a>
-                
-                <!-- 카카오맵 검색 버튼 (JavaScript에서 URL 설정) --><a href="#" id="kakao-map-btn" target="_blank" 
-                   class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-gray-900 bg-yellow-400 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 transition duration-150 ease-in-out">
-                    카카오 맵
-                </a>
+            <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mt-5">
+                <a href="#" id="naver-map-btn" target="_blank" class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">네이버 지도</a>
+                <a href="#" id="kakao-map-btn" target="_blank" class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-gray-900 bg-yellow-400 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 transition duration-150 ease-in-out">카카오 맵</a>
             </div>
         </section>
 
-        <!-- 참가 신청 폼 섹션 --><section class="bg-white p-6 rounded-2xl shadow-lg">
+        <section class="bg-white p-6 rounded-2xl shadow-lg">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📝 참가 신청</h2>
             <form onsubmit="handleFormSubmit(event)" class="space-y-4">
                 <div>
-                    <!-- '이름' -> '필명 / 작품'으로 변경 -->
                     <label for="name" class="block text-sm font-medium text-gray-700">필명 / 작품 <span class="text-red-500">*</span></label>
-                    <input type="text" id="name" name="name" required 
-                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
-                           placeholder="삼두기 / 슈퍼병신아카데미아" maxlength="70">
+                    <input type="text" id="name" name="name" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border" placeholder="삼두기 / 슈퍼병신아카데미아" maxlength="70">
                 </div>
-                <button type="submit" id="submit-btn"
-                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out disabled:bg-indigo-300">
-                    참가 신청하기
-                </button>
+                <button type="submit" id="submit-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out disabled:bg-indigo-300">참가 신청하기</button>
             </form>
         </section>
 
-        <!-- 참가자 목록 섹션: 헤더 및 목록 구조 변경 --><section class="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <section class="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div class="p-6 bg-indigo-50 border-b border-indigo-200">
-                <!-- 왼쪽 정렬로 변경하고 명수 표시 방식 변경 -->
                 <h2 class="text-2xl font-bold text-gray-800 flex items-baseline space-x-1">
                     <span>참가자 명단</span>
                     <span id="participant-count" class="text-indigo-600 text-3xl font-extrabold">...</span>
                     <span>명</span>
                 </h2>
-                <!-- 실시간 업데이트 문구 삭제됨 -->
             </div>
-            <!-- 참가자 목록이 렌더링될 곳 --><div id="participant-list" class="divide-y divide-gray-100">
+            <div id="participant-list" class="divide-y divide-gray-100">
                 <div class="text-center p-8 text-gray-400">참가자 목록을 불러오는 중...</div>
             </div>
         </section>
 
-        <!-- 토스트 메시지 표시 영역 --><div id="toast-message" class="fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4">
-            토스트 메시지
-        </div>
+        <div id="toast-message" class="fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4">토스트 메시지</div>
 
-        <!-- 비밀번호 확인 모달 (커스텀 UI) -->
         <div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm space-y-4">
                 <h3 class="text-lg font-bold text-gray-800">참가자 삭제 확인</h3>
-                <!-- 글자 삭제 요청 반영 -->
                 <p class="text-sm font-bold text-gray-700">비밀번호</p>
                 <input type="password" id="delete-password" placeholder="비밀번호 입력" class="w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
                 <div class="flex justify-end space-x-3">
@@ -437,7 +338,6 @@
                 </div>
             </div>
         </div>
-        
     </div>
 </body>
 </html>
