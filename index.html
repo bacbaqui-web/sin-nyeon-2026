@@ -280,7 +280,7 @@
             const name = nameInput.value.trim();
 
             if (!name) {
-                showToast("필명 / 작품은 필수 입력 사항입니다.", "error");
+                showToast("필명은 필수 입력 사항입니다.", "error");
                 return;
             }
 
@@ -433,10 +433,12 @@
             <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📝 참가 신청</h2>
             <form onsubmit="handleFormSubmit(event)" class="space-y-4">
                 <div>
-                    <label for="name" class="block text-sm font-medium text-gray-700">필명 / 작품 <span class="text-red-500">*</span></label>
+                    <label for="name" class="block text-sm font-medium text-gray-700">
+                        필명 <span class="text-red-500">*</span>
+                    </label>
                     <input type="text" id="name" name="name" required
                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
-                           placeholder="삼두기 / 슈퍼병신아카데미아" maxlength="70">
+                           maxlength="70">
                 </div>
                 <button type="submit" id="submit-btn"
                         class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out disabled:bg-indigo-300">
