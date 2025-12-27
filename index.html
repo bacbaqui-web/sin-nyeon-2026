@@ -1,662 +1,595 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>디스코드 사랑방 2026 신년회</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
-        /* 스크롤바 숨기기 */
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>디스코드 사랑방 2026 신년회</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
 </head>
+
 <body class="p-4 sm:p-8">
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      query,
+      onSnapshot,
+      orderBy,
+      serverTimestamp,
+      doc,
+      deleteDoc,
+      updateDoc
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <!-- Firebase SDK 및 로직 -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import {
-            getFirestore,
-            collection,
-            addDoc,
-            query,
-            onSnapshot,
-            orderBy,
-            serverTimestamp,
-            doc,
-            deleteDoc,
-            updateDoc
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    let db;
+    let participantToDeleteId = null;
+    let participantToTogglePaid = null; // { id, nextPaid }
 
-        // ===== 전역 상태 =====
-        let db;
-        let participantToDeleteId = null;
+    const COLLECTION_NAME = "participants";
+    const DEPOSIT_ACCOUNT_TEXT = "카카오뱅크 3333-01-1999456 박병욱";
 
-        // 입금 여부 토글 대상
-        let participantToTogglePaid = null; // { id: string, nextPaid: boolean }
+    const firebaseConfig = {
+      apiKey: "AIzaSyBKdlRRmjuZbrARI0_eoFa8KMsnSIpqlNw",
+      authDomain: "sin-nyeon-2026.firebaseapp.com",
+      projectId: "sin-nyeon-2026",
+      storageBucket: "sin-nyeon-2026.firebasestorage.app",
+      messagingSenderId: "376174106968",
+      appId: "1:376174106968:web:5c169c819724a4f4982d2d",
+      measurementId: "G-RF6CT40D5S"
+    };
 
-        const COLLECTION_NAME = 'participants';
+    const MAP_IMAGE_URL =
+      "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/1763996729377_clipboard-image.jpg?alt=media&token=75ea6689-63bb-4f95-8654-e7feaf5bcca5";
 
-        // ===== 입금 계좌 정보 =====
-        const DEPOSIT_ACCOUNT_TEXT = "카카오뱅크 3333-01-1999456 박병욱";
+    const GALLERY_IMAGES = [
+      "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_001.jpg?alt=media&token=b16dcdd6-7714-479b-a67f-b85a3fc01f90",
+      "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_002.jpg?alt=media&token=67855922-ea6d-4a06-af34-9f3710c92871",
+      "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_003.jpg?alt=media&token=8ee91425-878b-4cbf-b954-0500fc049e54",
+      "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_004.jpg?alt=media&token=b049722b-dbfa-49bc-b4e2-88bff8321c93",
+      "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_005.jpg?alt=media&token=07f7b6ce-ff1c-4658-aa6c-b0c485ced06d",
+      "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_006.jpg?alt=media&token=674c2678-5af2-4abe-85bf-48e6b3de1c48",
+      "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_007.jpg?alt=media&token=3f34e876-fda1-4911-8787-9314e10f79af",
+      "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_008.jpg?alt=media&token=c8b0116b-5c81-4246-a753-4c8ae168ce70",
+      "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_009.jpg?alt=media&token=914503bc-e1aa-409b-b53c-e2986ca4a61d",
+      "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_010.jpg?alt=media&token=04c04058-3b42-407c-96af-1a25321e9393"
+    ];
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBKdlRRmjuZbrARI0_eoFa8KMsnSIpqlNw",
-            authDomain: "sin-nyeon-2026.firebaseapp.com",
-            projectId: "sin-nyeon-2026",
-            storageBucket: "sin-nyeon-2026.firebasestorage.app",
-            messagingSenderId: "376174106968",
-            appId: "1:376174106968:web:5c169c819724a4f4982d2d",
-            measurementId: "G-RF6CT40D5S"
-        };
+    let currentGalleryIndex = 0;
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+    let isDragging = false;
 
-        const MAP_IMAGE_URL = 'https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/1763996729377_clipboard-image.jpg?alt=media&token=75ea6689-63bb-4f95-8654-e7feaf5bcca5';
+    function initFirebase() {
+      try {
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
 
-        // 갤러리 이미지 목록
-        const GALLERY_IMAGES = [
-            "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_001.jpg?alt=media&token=b16dcdd6-7714-479b-a67f-b85a3fc01f90",
-            "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_002.jpg?alt=media&token=67855922-ea6d-4a06-af34-9f3710c92871",
-            "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_003.jpg?alt=media&token=8ee91425-878b-4cbf-b954-0500fc049e54",
-            "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_004.jpg?alt=media&token=b049722b-dbfa-49bc-b4e2-88bff8321c93",
-            "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_005.jpg?alt=media&token=07f7b6ce-ff1c-4658-aa6c-b0c485ced06d",
-            "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_006.jpg?alt=media&token=674c2678-5af2-4abe-85bf-48e6b3de1c48",
-            "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_007.jpg?alt=media&token=3f34e876-fda1-4911-8787-9314e10f79af",
-            "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_008.jpg?alt=media&token=c8b0116b-5c81-4246-a753-4c8ae168ce70",
-            "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_009.jpg?alt=media&token=914503bc-e1aa-409b-b53c-e2986ca4a61d",
-            "https://firebasestorage.googleapis.com/v0/b/sin-nyeon-2026.firebasestorage.app/o/%E1%84%8F%E1%85%A9%E1%84%86%E1%85%B5%E1%86%A8_010.jpg?alt=media&token=04c04058-3b42-407c-96af-1a25321e9393"
-        ];
+        const mapImgEl = document.getElementById("map-image");
+        if (mapImgEl) mapImgEl.src = MAP_IMAGE_URL;
 
-        let currentGalleryIndex = 0;
-        let isDown = false;
-        let startX;
-        let scrollLeft;
-        let isDragging = false;
+        const depositEl = document.getElementById("deposit-account-text");
+        if (depositEl) depositEl.textContent = DEPOSIT_ACCOUNT_TEXT;
 
-        // ---------- Firebase 초기화 (Auth 없음) ----------
-        function initFirebase() {
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-
-                const mapImgEl = document.getElementById('map-image');
-                if (mapImgEl) mapImgEl.src = MAP_IMAGE_URL;
-
-                // 계좌 문구 주입
-                const depositEl = document.getElementById('deposit-account-text');
-                if (depositEl) depositEl.textContent = DEPOSIT_ACCOUNT_TEXT;
-
-                console.log("✅ Firebase 초기화 완료");
-                loadParticipants();
-            } catch (error) {
-                console.error("🔥 Firebase 초기화 오류:", error);
-                const listEl = document.getElementById('participant-list');
-                if (listEl) {
-                    listEl.innerHTML = `
-                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                            <strong class="font-bold">연결 오류!</strong>
-                            <span class="block sm:inline">오류 내용: ${error.message}</span>
-                        </div>
-                    `;
-                }
-            }
+        loadParticipants();
+      } catch (error) {
+        console.error("Firebase 초기화 오류:", error);
+        const listEl = document.getElementById("participant-list");
+        if (listEl) {
+          listEl.innerHTML = `
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <strong class="font-bold">연결 오류!</strong>
+              <span class="block sm:inline">오류 내용: ${error.message}</span>
+            </div>
+          `;
         }
+      }
+    }
 
-        // ---------- 클립보드 복사 ----------
-        window.copyDepositAccount = async function () {
-            try {
-                if (navigator.clipboard && window.isSecureContext) {
-                    await navigator.clipboard.writeText(DEPOSIT_ACCOUNT_TEXT);
-                } else {
-                    // fallback
-                    const ta = document.createElement('textarea');
-                    ta.value = DEPOSIT_ACCOUNT_TEXT;
-                    ta.style.position = 'fixed';
-                    ta.style.left = '-9999px';
-                    ta.style.top = '-9999px';
-                    document.body.appendChild(ta);
-                    ta.focus();
-                    ta.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(ta);
-                }
-                showToast("입금계좌가 복사되었습니다.", "success");
-            } catch (e) {
-                console.error("복사 실패:", e);
-                showToast("복사에 실패했습니다. 수동으로 복사해 주세요.", "error");
-            }
-        };
+    window.copyDepositAccount = async function () {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(DEPOSIT_ACCOUNT_TEXT);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = DEPOSIT_ACCOUNT_TEXT;
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          ta.style.top = "-9999px";
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+        }
+        showToast("입금계좌가 복사되었습니다.", "success");
+      } catch (e) {
+        console.error("복사 실패:", e);
+        showToast("복사에 실패했습니다. 수동으로 복사해 주세요.", "error");
+      }
+    };
 
-        // ---------- 갤러리 초기화 ----------
-        function initGallery() {
-            const container = document.getElementById('gallery-container');
+    function initGallery() {
+      const container = document.getElementById("gallery-container");
+      GALLERY_IMAGES.forEach((url, index) => {
+        const wrap = document.createElement("div");
+        wrap.className = "flex-shrink-0 cursor-pointer select-none";
+        wrap.innerHTML = `
+          <img src="${url}" alt="Gallery Image ${index + 1}" draggable="false"
+               class="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-lg hover:opacity-80 transition shadow-sm border border-gray-200 pointer-events-none">
+        `;
+        wrap.onclick = () => { if (!isDragging) openGalleryModal(index); };
+        container.appendChild(wrap);
+      });
+      enableDragScroll(container);
+    }
 
-            GALLERY_IMAGES.forEach((url, index) => {
-                const imgWrapper = document.createElement('div');
-                imgWrapper.className = "flex-shrink-0 cursor-pointer select-none";
-                imgWrapper.innerHTML = `
-                    <img src="${url}"
-                         alt="Gallery Image ${index + 1}"
-                         draggable="false"
-                         class="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-lg hover:opacity-80 transition shadow-sm border border-gray-200 pointer-events-none">
-                `;
-                imgWrapper.onclick = () => {
-                    if (!isDragging) openGalleryModal(index);
-                };
-                container.appendChild(imgWrapper);
+    function enableDragScroll(slider) {
+      slider.addEventListener("mousedown", (e) => {
+        isDown = true;
+        isDragging = false;
+        slider.classList.add("cursor-grabbing");
+        slider.classList.remove("cursor-grab");
+        startX = e.pageX - slider.offsetLeft;
+        scrollLeft = slider.scrollLeft;
+      });
+      slider.addEventListener("mouseleave", () => {
+        isDown = false;
+        slider.classList.remove("cursor-grabbing");
+        slider.classList.add("cursor-grab");
+      });
+      slider.addEventListener("mouseup", () => {
+        isDown = false;
+        slider.classList.remove("cursor-grabbing");
+        slider.classList.add("cursor-grab");
+        setTimeout(() => (isDragging = false), 10);
+      });
+      slider.addEventListener("mousemove", (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - slider.offsetLeft;
+        const walk = (x - startX) * 2;
+        if (Math.abs(walk) > 5) isDragging = true;
+        slider.scrollLeft = scrollLeft - walk;
+      });
+    }
+
+    window.openGalleryModal = function (index) {
+      currentGalleryIndex = index;
+      const modal = document.getElementById("gallery-modal");
+      const img = document.getElementById("gallery-modal-image");
+      img.src = GALLERY_IMAGES[currentGalleryIndex];
+      modal.classList.remove("hidden");
+    };
+
+    window.closeGalleryModal = function () {
+      const modal = document.getElementById("gallery-modal");
+      const img = document.getElementById("gallery-modal-image");
+      modal.classList.add("hidden");
+      img.src = "";
+    };
+
+    window.showNextImage = function (event) {
+      if (event) event.stopPropagation();
+      currentGalleryIndex = (currentGalleryIndex + 1) % GALLERY_IMAGES.length;
+      document.getElementById("gallery-modal-image").src = GALLERY_IMAGES[currentGalleryIndex];
+    };
+
+    function setupMapButtons() {
+      const searchName = "감성 게임파티룸 모꼬지 강남점";
+      const encodedName = encodeURIComponent(searchName);
+      const naverBtn = document.getElementById("naver-map-btn");
+      const kakaoBtn = document.getElementById("kakao-map-btn");
+      if (naverBtn) naverBtn.href = `https://map.naver.com/v5/search/${encodedName}`;
+      if (kakaoBtn) kakaoBtn.href = "https://place.map.kakao.com/1670851940";
+    }
+
+    function loadParticipants() {
+      if (!db) return;
+
+      const colRef = collection(db, COLLECTION_NAME);
+      const q = query(colRef, orderBy("timestamp", "desc"));
+
+      onSnapshot(
+        q,
+        (snapshot) => {
+          const participants = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            participants.push({
+              id: docSnap.id,
+              ...data,
+              paid: !!data.paid,
+              timestamp: data.timestamp ? data.timestamp.toDate() : new Date(0)
             });
-
-            enableDragScroll(container);
+          });
+          renderParticipants(participants);
+        },
+        (error) => {
+          console.error("데이터 불러오기 실패:", error);
+          const listEl = document.getElementById("participant-list");
+          if (listEl) {
+            listEl.innerHTML = `
+              <div class="text-center p-4 text-red-500 font-bold">
+                ⚠️ 데이터를 불러올 수 없습니다.<br>
+                <span class="text-xs text-gray-500 font-normal">(${error.message})</span>
+              </div>
+            `;
+          }
         }
+      );
+    }
 
-        function enableDragScroll(slider) {
-            slider.addEventListener('mousedown', (e) => {
-                isDown = true;
-                isDragging = false;
-                slider.classList.add('cursor-grabbing');
-                slider.classList.remove('cursor-grab');
-                startX = e.pageX - slider.offsetLeft;
-                scrollLeft = slider.scrollLeft;
-            });
+    function renderParticipants(participants) {
+      const list = document.getElementById("participant-list");
+      const countEl = document.getElementById("participant-count");
 
-            slider.addEventListener('mouseleave', () => {
-                isDown = false;
-                slider.classList.remove('cursor-grabbing');
-                slider.classList.add('cursor-grab');
-            });
+      list.innerHTML = "";
+      countEl.textContent = participants.length;
 
-            slider.addEventListener('mouseup', () => {
-                isDown = false;
-                slider.classList.remove('cursor-grabbing');
-                slider.classList.add('cursor-grab');
-                setTimeout(() => (isDragging = false), 10);
-            });
+      if (participants.length === 0) {
+        list.innerHTML = `
+          <p class="text-gray-500 text-center py-4 bg-gray-50 rounded-lg">
+            아직 참가자가 없습니다. 첫 번째로 등록해 보세요!
+          </p>
+        `;
+        return;
+      }
 
-            slider.addEventListener('mousemove', (e) => {
-                if (!isDown) return;
-                e.preventDefault();
-                const x = e.pageX - slider.offsetLeft;
-                const walk = (x - startX) * 2;
-                if (Math.abs(walk) > 5) {
-                    isDragging = true;
-                }
-                slider.scrollLeft = scrollLeft - walk;
-            });
-        }
+      participants.forEach((p, index) => {
+        const item = document.createElement("div");
+        const displayNum = index + 1;
 
-        // 라이트박스 관련 전역 함수
-        window.openGalleryModal = function (index) {
-            currentGalleryIndex = index;
-            const modal = document.getElementById('gallery-modal');
-            const modalImage = document.getElementById('gallery-modal-image');
-            modalImage.src = GALLERY_IMAGES[currentGalleryIndex];
-            modal.classList.remove('hidden');
-        };
+        // ✅ 입금 여부는 $ 색상으로만 표현
+        const dollarClass = p.paid
+          ? "text-green-700 hover:text-green-900"
+          : "text-gray-400 hover:text-gray-700";
 
-        window.closeGalleryModal = function () {
-            const modal = document.getElementById('gallery-modal');
-            const modalImage = document.getElementById('gallery-modal-image');
-            modal.classList.add('hidden');
-            modalImage.src = '';
-        };
+        item.className =
+          "flex justify-between items-center p-4 border-b border-gray-100 last:border-b-0 transition duration-200 bg-white hover:bg-indigo-50/40";
 
-        window.showNextImage = function (event) {
-            if (event) event.stopPropagation();
-            currentGalleryIndex = (currentGalleryIndex + 1) % GALLERY_IMAGES.length;
-            const modalImage = document.getElementById('gallery-modal-image');
-            modalImage.src = GALLERY_IMAGES[currentGalleryIndex];
-        };
-
-        // ---------- 지도 버튼 ----------
-        function setupMapButtons() {
-            const searchName = '감성 게임파티룸 모꼬지 강남점';
-            const encodedName = encodeURIComponent(searchName);
-            const naverBtn = document.getElementById('naver-map-btn');
-            const kakaoBtn = document.getElementById('kakao-map-btn');
-
-            if (naverBtn) naverBtn.href = `https://map.naver.com/v5/search/${encodedName}`;
-            if (kakaoBtn) kakaoBtn.href = 'https://place.map.kakao.com/1670851940';
-        }
-
-        // ---------- 참가자 로드 ----------
-        function loadParticipants() {
-            if (!db) return;
-
-            const participantsColRef = collection(db, COLLECTION_NAME);
-            const q = query(participantsColRef, orderBy("timestamp", "desc"));
-
-            onSnapshot(
-                q,
-                (snapshot) => {
-                    const participants = [];
-                    snapshot.forEach((docSnap) => {
-                        const data = docSnap.data();
-                        participants.push({
-                            id: docSnap.id,
-                            ...data,
-                            paid: !!data.paid, // 기본 false
-                            timestamp: data.timestamp ? data.timestamp.toDate() : new Date(0)
-                        });
-                    });
-                    renderParticipants(participants);
-                },
-                (error) => {
-                    console.error("🔥 데이터 불러오기 실패:", error);
-                    let errorText = "데이터를 불러올 수 없습니다.";
-                    if (error.code === 'permission-denied') {
-                        errorText = "권한이 거부되었습니다.";
-                    }
-                    const listEl = document.getElementById('participant-list');
-                    if (listEl) {
-                        listEl.innerHTML = `
-                            <div class="text-center p-4 text-red-500 font-bold">
-                                ⚠️ ${errorText}<br>
-                                <span class="text-xs text-gray-500 font-normal">(${error.message})</span>
-                            </div>
-                        `;
-                    }
-                }
-            );
-        }
-
-        // ---------- 참가자 렌더 ----------
-        function renderParticipants(participants) {
-            const listContainer = document.getElementById('participant-list');
-            const countEl = document.getElementById('participant-count');
-
-            listContainer.innerHTML = '';
-            countEl.textContent = participants.length;
-
-            if (participants.length === 0) {
-                listContainer.innerHTML = `
-                    <p class="text-gray-500 text-center py-4 bg-gray-50 rounded-lg">
-                        아직 참가자가 없습니다. 첫 번째로 등록해 보세요!
-                    </p>
-                `;
-                return;
-            }
-
-            participants.forEach((p, index) => {
-                const item = document.createElement('div');
-                const displayNum = index + 1;
-
-                const paidRowClass = p.paid
-                    ? 'bg-green-50 hover:bg-green-100/70'
-                    : 'bg-white hover:bg-indigo-50/50';
-
-                const nameClass = p.paid
-                    ? 'text-green-800'
-                    : 'text-gray-800';
-
-                const badgeHtml = p.paid
-                    ? `<span class="ml-2 inline-flex items-center text-xs font-bold px-2 py-1 rounded-full bg-green-200 text-green-900">입금완료</span>`
-                    : `<span class="ml-2 inline-flex items-center text-xs font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-500">미입금</span>`;
-
-                item.className =
-                    `flex justify-between items-center p-4 border-b border-gray-100 last:border-b-0 transition duration-300 ${paidRowClass}`;
-
-                item.innerHTML = `
-                    <div class="flex items-center space-x-4 flex-1">
-                        <span class="font-bold text-indigo-600 text-lg w-6 text-center">${displayNum}</span>
-                        <div class="flex items-center">
-                            <p class="font-semibold ${nameClass}">${p.name}</p>
-                            ${badgeHtml}
-                        </div>
-                    </div>
-
-                    <div class="flex items-center space-x-1 flex-shrink-0">
-                        <!-- $ 버튼 (입금 체크) -->
-                        <button
-                            onclick="window.requestTogglePaid('${p.id}', ${p.paid ? 'true' : 'false'})"
-                            class="px-3 py-2 rounded-full transition duration-150 font-extrabold
-                                   ${p.paid ? 'text-green-700 hover:text-green-900' : 'text-gray-500 hover:text-gray-800'}"
-                            title="입금 여부 체크(비밀번호 필요)">
-                            $
-                        </button>
-
-                        <!-- 삭제 버튼 -->
-                        <button onclick="window.requestDelete('${p.id}')"
-                                class="text-red-500 hover:text-red-700 p-2 rounded-full transition duration-150"
-                                title="참가자 삭제">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-                `;
-                listContainer.appendChild(item);
-            });
-        }
-
-        // ---------- 폼 제출 ----------
-        window.handleFormSubmit = async function (event) {
-            event.preventDefault();
-            const nameInput = document.getElementById('name');
-            const submitButton = document.getElementById('submit-btn');
-            const name = nameInput.value.trim();
-
-            if (!name) {
-                showToast("필명은 필수 입력 사항입니다.", "error");
-                return;
-            }
-
-            if (!db) {
-                showToast("DB 연결 전입니다.", "error");
-                return;
-            }
-
-            submitButton.disabled = true;
-            submitButton.textContent = '등록 중...';
-
-            try {
-                await addDoc(collection(db, COLLECTION_NAME), {
-                    name,
-                    contact: '',
-                    comment: '',
-                    paid: false, // ✅ 기본 미입금
-                    timestamp: serverTimestamp()
-                });
-                showToast("참가 신청이 완료되었습니다!", "success");
-                nameInput.value = '';
-            } catch (e) {
-                console.error("참가 신청 실패:", e);
-                showToast(`신청 오류: ${e.message}`, "error");
-            } finally {
-                submitButton.disabled = false;
-                submitButton.textContent = '참가 신청하기';
-            }
-        };
-
-        // ---------- 삭제 + 비밀번호 ----------
-        window.requestDelete = function (participantId) {
-            participantToDeleteId = participantId;
-            document.getElementById('password-modal').classList.remove('hidden');
-            const pwInput = document.getElementById('delete-password');
-            pwInput.value = '';
-            pwInput.focus();
-        };
-
-        window.closePasswordModal = function () {
-            document.getElementById('password-modal').classList.add('hidden');
-            participantToDeleteId = null;
-        };
-
-        window.checkPassword = async function () {
-            const passwordInput = document.getElementById('delete-password');
-            const confirmBtn = document.getElementById('confirm-delete-btn');
-
-            if (passwordInput.value.trim() !== '1234') {
-                showToast("비밀번호가 일치하지 않습니다.", "error");
-                passwordInput.value = '';
-                passwordInput.focus();
-                return;
-            }
-
-            if (!participantToDeleteId) {
-                window.closePasswordModal();
-                return;
-            }
-
-            confirmBtn.disabled = true;
-            confirmBtn.textContent = '삭제 중...';
-
-            try {
-                const docRef = doc(db, COLLECTION_NAME, participantToDeleteId);
-                await deleteDoc(docRef);
-                showToast("삭제되었습니다.", "success");
-                window.closePasswordModal();
-            } catch (e) {
-                console.error("삭제 오류:", e);
-                showToast(`삭제 오류: ${e.message}`, "error");
-            } finally {
-                confirmBtn.disabled = false;
-                confirmBtn.textContent = '삭제 확인';
-                participantToDeleteId = null;
-            }
-        };
-
-        // ---------- 입금 체크($) + 비밀번호 ----------
-        window.requestTogglePaid = function (participantId, currentPaid) {
-            participantToTogglePaid = { id: participantId, nextPaid: !currentPaid };
-            document.getElementById('paid-modal').classList.remove('hidden');
-
-            const pwInput = document.getElementById('paid-password');
-            pwInput.value = '';
-            pwInput.focus();
-
-            // 문구 업데이트
-            const label = document.getElementById('paid-modal-action-text');
-            if (label) label.textContent = (!currentPaid) ? "입금완료로 표시" : "미입금으로 되돌리기";
-        };
-
-        window.closePaidModal = function () {
-            document.getElementById('paid-modal').classList.add('hidden');
-            participantToTogglePaid = null;
-        };
-
-        window.checkPaidPassword = async function () {
-            const passwordInput = document.getElementById('paid-password');
-            const confirmBtn = document.getElementById('confirm-paid-btn');
-
-            if (passwordInput.value.trim() !== 'qwer') {
-                showToast("비밀번호가 일치하지 않습니다.", "error");
-                passwordInput.value = '';
-                passwordInput.focus();
-                return;
-            }
-
-            if (!participantToTogglePaid?.id) {
-                window.closePaidModal();
-                return;
-            }
-
-            confirmBtn.disabled = true;
-            confirmBtn.textContent = '처리 중...';
-
-            try {
-                const docRef = doc(db, COLLECTION_NAME, participantToTogglePaid.id);
-                await updateDoc(docRef, { paid: participantToTogglePaid.nextPaid });
-                showToast(
-                    participantToTogglePaid.nextPaid ? "입금완료로 표시했습니다." : "미입금으로 변경했습니다.",
-                    "success"
-                );
-                window.closePaidModal();
-            } catch (e) {
-                console.error("입금 상태 변경 오류:", e);
-                showToast(`처리 오류: ${e.message}`, "error");
-            } finally {
-                confirmBtn.disabled = false;
-                confirmBtn.textContent = '확인';
-                participantToTogglePaid = null;
-            }
-        };
-
-        // ---------- 토스트 ----------
-        function showToast(message, type) {
-            const toast = document.getElementById('toast-message');
-            toast.textContent = message;
-            const successStyle = "bg-green-500 border-green-700";
-            const errorStyle = "bg-red-500 border-red-700";
-
-            toast.className =
-                `fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4 ${
-                    type === 'success' ? successStyle : errorStyle
-                }`;
-            setTimeout(() => {
-                toast.classList.remove('opacity-0');
-                toast.classList.add('opacity-100');
-            }, 10);
-            setTimeout(() => {
-                toast.classList.remove('opacity-100');
-                toast.classList.add('opacity-0');
-            }, 3000);
-        }
-
-        // ---------- 시작 ----------
-        setupMapButtons();
-        initGallery();
-        initFirebase();
-    </script>
-
-    <div class="max-w-4xl mx-auto space-y-8">
-
-        <!-- 헤더 -->
-        <header class="bg-white p-6 md:p-8 rounded-2xl shadow-xl border-t-4 border-indigo-600">
-            <h1 class="text-3xl font-extrabold text-gray-900 mb-2">
-                🎉 디스코드 사랑방 2026 신년회
-            </h1>
-            <div class="space-y-4 bg-indigo-50 p-4 rounded-xl border border-indigo-200">
-                <ul class="list-none text-gray-700 space-y-2 text-base">
-                    <li><span class="font-bold text-indigo-800">🗓️ 일시:</span> 2026년 1월 3일 (토) 저녁 7시 ~ 1월 4일 아침 9시</li>
-                    <li><span class="font-bold text-indigo-800">💰 참가비:</span> 30,000원</li>
-                    <li><span class="font-bold text-indigo-800">📞 문의:</span> 박바퀴(박병욱) (010-5140-4640)</li>
-
-                    <!-- ✅ 문의 바로 밑에 입금계좌 + 복사 버튼 -->
-                    <li class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1">
-                        <div>
-                            <span class="font-bold text-indigo-800">💳 입금계좌:</span>
-                            <span id="deposit-account-text" class="font-semibold text-gray-800">로딩중...</span>
-                        </div>
-                        <button
-                            type="button"
-                            onclick="window.copyDepositAccount()"
-                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow-sm hover:bg-indigo-700 transition">
-                            복사
-                        </button>
-                    </li>
-                </ul>
+        item.innerHTML = `
+          <div class="flex items-center space-x-4 flex-1">
+            <span class="font-bold text-indigo-600 text-lg w-6 text-center">${displayNum}</span>
+            <div class="flex items-center">
+              <p class="font-semibold text-gray-800">${p.name}</p>
             </div>
-        </header>
+          </div>
 
-        <!-- 갤러리 섹션 -->
-        <section class="bg-white p-6 rounded-2xl shadow-lg">
-            <div id="gallery-container"
-                 class="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide cursor-grab select-none">
-                <!-- JS로 이미지가 주입됩니다 -->
-            </div>
-        </section>
-
-        <!-- 지도 섹션 -->
-        <section class="bg-white p-6 rounded-2xl shadow-lg">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📍 파티 장소: 감성 게임파티룸 모꼬지 강남점</h2>
-            <div class="aspect-w-16 aspect-h-9 overflow-hidden rounded-xl shadow-md mb-4 flex items-center justify-center bg-gray-100">
-                <img
-                    id="map-image"
-                    src=""
-                    alt="감성 게임파티룸 모꼬지 강남점 위치 이미지"
-                    class="w-full h-auto object-cover rounded-xl"
-                />
-            </div>
-            <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mt-5">
-                <a href="#" id="naver-map-btn" target="_blank"
-                   class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">네이버 지도</a>
-                <a href="#" id="kakao-map-btn" target="_blank"
-                   class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-gray-900 bg-yellow-400 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 transition duration-150 ease-in-out">카카오 맵</a>
-            </div>
-        </section>
-
-        <!-- 참가 신청 폼 -->
-        <section class="bg-white p-6 rounded-2xl shadow-lg">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📝 참가 신청</h2>
-            <form onsubmit="handleFormSubmit(event)" class="space-y-4">
-                <div>
-                    <label for="name" class="block text-sm font-medium text-gray-700">
-                        필명 <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" id="name" name="name" required
-                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
-                           maxlength="70">
-                </div>
-                <button type="submit" id="submit-btn"
-                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out disabled:bg-indigo-300">
-                    참가 신청하기
-                </button>
-            </form>
-        </section>
-
-        <!-- 참가자 목록 -->
-        <section class="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div class="p-6 bg-indigo-50 border-b border-indigo-200">
-                <h2 class="text-2xl font-bold text-gray-800 flex items-baseline space-x-1">
-                    <span>참가자 명단</span>
-                    <span id="participant-count" class="text-indigo-600 text-3xl font-extrabold">...</span>
-                    <span>명</span>
-                </h2>
-                <p class="text-sm text-gray-600 mt-2">
-                    <span class="font-bold">$</span> 버튼을 눌러 비밀번호(<span class="font-mono">qwer</span>) 입력 시 입금 여부를 토글할 수 있습니다.
-                </p>
-            </div>
-            <div id="participant-list" class="divide-y divide-gray-100">
-                <div class="text-center p-8 text-gray-400">참가자 목록을 불러오는 중...</div>
-            </div>
-        </section>
-
-        <!-- 토스트 메시지 -->
-        <div id="toast-message"
-             class="fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4">
-            토스트 메시지
-        </div>
-
-        <!-- 삭제 비밀번호 모달 -->
-        <div id="password-modal"
-             class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm space-y-4">
-                <h3 class="text-lg font-bold text-gray-800">참가자 삭제 확인</h3>
-                <p class="text-sm font-bold text-gray-700">비밀번호</p>
-                <input type="password" id="delete-password" placeholder="비밀번호 입력"
-                       class="w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
-                <div class="flex justify-end space-x-3">
-                    <button onclick="closePasswordModal()"
-                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
-                        취소
-                    </button>
-                    <button onclick="checkPassword()" id="confirm-delete-btn"
-                            class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50">
-                        삭제 확인
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ✅ 입금 체크 비밀번호 모달 -->
-        <div id="paid-modal"
-             class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm space-y-4">
-                <h3 class="text-lg font-bold text-gray-800">입금 여부 변경</h3>
-                <p class="text-sm text-gray-700">
-                    실행: <span id="paid-modal-action-text" class="font-bold">입금완료로 표시</span>
-                </p>
-                <p class="text-sm font-bold text-gray-700">비밀번호</p>
-                <input type="password" id="paid-password" placeholder="비밀번호 입력 (qwer)"
-                       class="w-full p-3 border rounded-lg focus:ring-green-500 focus:border-green-500">
-                <div class="flex justify-end space-x-3">
-                    <button onclick="closePaidModal()"
-                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
-                        취소
-                    </button>
-                    <button onclick="checkPaidPassword()" id="confirm-paid-btn"
-                            class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50">
-                        확인
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 갤러리 미리보기 모달 (LightBox) -->
-        <div id="gallery-modal"
-             class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4 cursor-pointer"
-             onclick="closeGalleryModal()">
+          <div class="flex items-center space-x-1 flex-shrink-0">
             <button
-                class="absolute top-4 right-4 text-white text-3xl font-bold hover:text-gray-300 z-50">&times;
+              type="button"
+              onclick="window.requestTogglePaid('${p.id}', ${p.paid ? "true" : "false"})"
+              class="px-3 py-2 rounded-full transition duration-150 font-extrabold ${dollarClass}"
+              title="입금 여부 변경">
+              $
             </button>
-            <img id="gallery-modal-image" src="" alt="크게 보기"
-                 class="max-w-full max-h-full rounded-lg shadow-2xl object-contain cursor-pointer"
-                 onclick="showNextImage(event)">
-        </div>
 
+            <button
+              type="button"
+              onclick="window.requestDelete('${p.id}')"
+              class="text-red-500 hover:text-red-700 p-2 rounded-full transition duration-150"
+              title="참가자 삭제">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    window.handleFormSubmit = async function (event) {
+      event.preventDefault();
+      const nameInput = document.getElementById("name");
+      const submitButton = document.getElementById("submit-btn");
+      const name = nameInput.value.trim();
+
+      if (!name) {
+        showToast("필명은 필수 입력 사항입니다.", "error");
+        return;
+      }
+      if (!db) {
+        showToast("DB 연결 전입니다.", "error");
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = "등록 중...";
+
+      try {
+        await addDoc(collection(db, COLLECTION_NAME), {
+          name,
+          contact: "",
+          comment: "",
+          paid: false, // 기본 미입금
+          timestamp: serverTimestamp()
+        });
+        showToast("참가 신청이 완료되었습니다!", "success");
+        nameInput.value = "";
+      } catch (e) {
+        console.error("참가 신청 실패:", e);
+        showToast(`신청 오류: ${e.message}`, "error");
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "참가 신청하기";
+      }
+    };
+
+    // 삭제 모달
+    window.requestDelete = function (participantId) {
+      participantToDeleteId = participantId;
+      document.getElementById("password-modal").classList.remove("hidden");
+      const pw = document.getElementById("delete-password");
+      pw.value = "";
+      pw.focus();
+    };
+
+    window.closePasswordModal = function () {
+      document.getElementById("password-modal").classList.add("hidden");
+      participantToDeleteId = null;
+    };
+
+    window.checkPassword = async function () {
+      const passwordInput = document.getElementById("delete-password");
+      const confirmBtn = document.getElementById("confirm-delete-btn");
+
+      if (passwordInput.value.trim() !== "1234") {
+        showToast("비밀번호가 일치하지 않습니다.", "error");
+        passwordInput.value = "";
+        passwordInput.focus();
+        return;
+      }
+      if (!participantToDeleteId) {
+        window.closePasswordModal();
+        return;
+      }
+
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = "삭제 중...";
+
+      try {
+        await deleteDoc(doc(db, COLLECTION_NAME, participantToDeleteId));
+        showToast("삭제되었습니다.", "success");
+        window.closePasswordModal();
+      } catch (e) {
+        console.error("삭제 오류:", e);
+        showToast(`삭제 오류: ${e.message}`, "error");
+      } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = "삭제 확인";
+        participantToDeleteId = null;
+      }
+    };
+
+    // ✅ 입금 체크($) 모달
+    window.requestTogglePaid = function (participantId, currentPaid) {
+      participantToTogglePaid = { id: participantId, nextPaid: !currentPaid };
+      document.getElementById("paid-modal").classList.remove("hidden");
+      const pw = document.getElementById("paid-password");
+      pw.value = "";
+      pw.focus();
+    };
+
+    window.closePaidModal = function () {
+      document.getElementById("paid-modal").classList.add("hidden");
+      participantToTogglePaid = null;
+    };
+
+    window.checkPaidPassword = async function () {
+      const passwordInput = document.getElementById("paid-password");
+      const confirmBtn = document.getElementById("confirm-paid-btn");
+
+      if (passwordInput.value.trim() !== "qwer") {
+        showToast("비밀번호가 일치하지 않습니다.", "error");
+        passwordInput.value = "";
+        passwordInput.focus();
+        return;
+      }
+      if (!participantToTogglePaid?.id) {
+        window.closePaidModal();
+        return;
+      }
+
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = "처리 중...";
+
+      try {
+        await updateDoc(doc(db, COLLECTION_NAME, participantToTogglePaid.id), {
+          paid: participantToTogglePaid.nextPaid
+        });
+        showToast("처리되었습니다.", "success");
+        window.closePaidModal();
+      } catch (e) {
+        console.error("입금 상태 변경 오류:", e);
+        showToast(`처리 오류: ${e.message}`, "error");
+      } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = "확인";
+        participantToTogglePaid = null;
+      }
+    };
+
+    function showToast(message, type) {
+      const toast = document.getElementById("toast-message");
+      toast.textContent = message;
+      const successStyle = "bg-green-500 border-green-700";
+      const errorStyle = "bg-red-500 border-red-700";
+
+      toast.className =
+        `fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4 ${
+          type === "success" ? successStyle : errorStyle
+        }`;
+
+      setTimeout(() => {
+        toast.classList.remove("opacity-0");
+        toast.classList.add("opacity-100");
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.remove("opacity-100");
+        toast.classList.add("opacity-0");
+      }, 3000);
+    }
+
+    setupMapButtons();
+    initGallery();
+    initFirebase();
+  </script>
+
+  <div class="max-w-4xl mx-auto space-y-8">
+    <!-- 헤더 -->
+    <header class="bg-white p-6 md:p-8 rounded-2xl shadow-xl border-t-4 border-indigo-600">
+      <h1 class="text-3xl font-extrabold text-gray-900 mb-2">🎉 디스코드 사랑방 2026 신년회</h1>
+
+      <div class="space-y-4 bg-indigo-50 p-4 rounded-xl border border-indigo-200">
+        <ul class="list-none text-gray-700 space-y-2 text-base">
+          <li><span class="font-bold text-indigo-800">🗓️ 일시:</span> 2026년 1월 3일 (토) 저녁 7시 ~ 1월 4일 아침 9시</li>
+          <li><span class="font-bold text-indigo-800">💰 참가비:</span> 30,000원</li>
+          <li><span class="font-bold text-indigo-800">📞 문의:</span> 박바퀴(박병욱) (010-5140-4640)</li>
+
+          <!-- ✅ 문의 바로 밑에 입금계좌 + 복사 버튼 -->
+          <li class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1">
+            <div>
+              <span class="font-bold text-indigo-800">💳 입금계좌:</span>
+              <span id="deposit-account-text" class="font-semibold text-gray-800">로딩중...</span>
+            </div>
+            <button
+              type="button"
+              onclick="window.copyDepositAccount()"
+              class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow-sm hover:bg-indigo-700 transition">
+              복사
+            </button>
+          </li>
+        </ul>
+      </div>
+    </header>
+
+    <!-- 갤러리 -->
+    <section class="bg-white p-6 rounded-2xl shadow-lg">
+      <div id="gallery-container"
+           class="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide cursor-grab select-none"></div>
+    </section>
+
+    <!-- 지도 -->
+    <section class="bg-white p-6 rounded-2xl shadow-lg">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📍 파티 장소: 감성 게임파티룸 모꼬지 강남점</h2>
+      <div class="overflow-hidden rounded-xl shadow-md mb-4 flex items-center justify-center bg-gray-100">
+        <img id="map-image" src="" alt="감성 게임파티룸 모꼬지 강남점 위치 이미지"
+             class="w-full h-auto object-cover rounded-xl" />
+      </div>
+      <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mt-5">
+        <a href="#" id="naver-map-btn" target="_blank"
+           class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-green-500 hover:bg-green-600 transition">
+          네이버 지도
+        </a>
+        <a href="#" id="kakao-map-btn" target="_blank"
+           class="flex-1 text-center px-4 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-gray-900 bg-yellow-400 hover:bg-yellow-500 transition">
+          카카오 맵
+        </a>
+      </div>
+    </section>
+
+    <!-- 참가 신청 -->
+    <section class="bg-white p-6 rounded-2xl shadow-lg">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📝 참가 신청</h2>
+      <form onsubmit="handleFormSubmit(event)" class="space-y-4">
+        <div>
+          <label for="name" class="block text-sm font-medium text-gray-700">
+            필명 <span class="text-red-500">*</span>
+          </label>
+          <input type="text" id="name" name="name" required maxlength="70"
+                 class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border" />
+        </div>
+        <button type="submit" id="submit-btn"
+                class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 transition">
+          참가 신청하기
+        </button>
+      </form>
+    </section>
+
+    <!-- 참가자 목록 -->
+    <section class="bg-white rounded-2xl shadow-lg overflow-hidden">
+      <div class="p-6 bg-indigo-50 border-b border-indigo-200">
+        <h2 class="text-2xl font-bold text-gray-800 flex items-baseline space-x-1">
+          <span>참가자 명단</span>
+          <span id="participant-count" class="text-indigo-600 text-3xl font-extrabold">...</span>
+          <span>명</span>
+        </h2>
+      </div>
+
+      <div id="participant-list" class="divide-y divide-gray-100">
+        <div class="text-center p-8 text-gray-400">참가자 목록을 불러오는 중...</div>
+      </div>
+    </section>
+
+    <!-- 토스트 -->
+    <div id="toast-message"
+         class="fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-xl text-white shadow-lg z-50 transition-opacity duration-300 opacity-0 border-b-4">
+      토스트 메시지
     </div>
+
+    <!-- 삭제 비밀번호 모달 -->
+    <div id="password-modal"
+         class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm space-y-4">
+        <h3 class="text-lg font-bold text-gray-800">참가자 삭제 확인</h3>
+        <p class="text-sm font-bold text-gray-700">비밀번호</p>
+        <input type="password" id="delete-password" placeholder="비밀번호 입력"
+               class="w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500" />
+        <div class="flex justify-end space-x-3">
+          <button type="button" onclick="closePasswordModal()"
+                  class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
+            취소
+          </button>
+          <button type="button" onclick="checkPassword()" id="confirm-delete-btn"
+                  class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50">
+            삭제 확인
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ✅ 입금 체크 비밀번호 모달 -->
+    <div id="paid-modal"
+         class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm space-y-4">
+        <h3 class="text-lg font-bold text-gray-800">입금 여부 변경</h3>
+        <p class="text-sm font-bold text-gray-700">비밀번호</p>
+        <input type="password" id="paid-password" placeholder="비밀번호 입력"
+               class="w-full p-3 border rounded-lg focus:ring-green-500 focus:border-green-500" />
+        <div class="flex justify-end space-x-3">
+          <button type="button" onclick="closePaidModal()"
+                  class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
+            취소
+          </button>
+          <button type="button" onclick="checkPaidPassword()" id="confirm-paid-btn"
+                  class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50">
+            확인
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 갤러리 모달 -->
+    <div id="gallery-modal"
+         class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4 cursor-pointer"
+         onclick="closeGalleryModal()">
+      <button class="absolute top-4 right-4 text-white text-3xl font-bold hover:text-gray-300 z-50">&times;</button>
+      <img id="gallery-modal-image" src="" alt="크게 보기"
+           class="max-w-full max-h-full rounded-lg shadow-2xl object-contain cursor-pointer"
+           onclick="showNextImage(event)" />
+    </div>
+
+  </div>
 </body>
 </html>
